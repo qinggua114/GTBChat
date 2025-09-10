@@ -10,7 +10,6 @@
 #include <iomanip>
 #include <fstream>
 
-#include "sql.h"
 #include "command.h"
 
 #include <winsock2.h>
@@ -27,35 +26,31 @@ fstream log;
 
 //Config
 
-int usersum=0;
-
-
 
 //Global
 string Massage="";
-struct USER{
-    string UserName="";
-    string PassWord="";
-    string UUID="";
-    char* IP="";
-    int Port=-1;
-    bool Logged=false;
+struct CMSG{
+    bool onUse=0;
+    string massage="";
+    string sourceUsername="";
+    string targetUsername="";
 };
+CMSG cliMassage[5];
 
-string DealDATA(char* buffer, USER *user);
-
-
-//SQL
-GTBSQL SQL;
+string dealData(char* buffer, USER *user);
 
 
+//Database
+GTBDB DB;
 
-/*================WeboPeration================*/
+
+
+/*================WebOperation================*/
 
 SOCKET server_fd = INVALID_SOCKET;
 
 //INIT WSA(Only on Windows)
-bool init_network() {
+bool initNetwork() {
     #ifdef _WIN32
 	cout << MSG_STYLE_PRESET << "Starting up WSA..." << endl;
     log << LOG_STYLE_PRESET << "Starting up WSA..." << endl;
@@ -73,7 +68,7 @@ bool init_network() {
 
 
 //Clean up WSA(Only on Windows)
-void cleanup_network() {
+void cleanupNetwork() {
     #ifdef _WIN32
     WSACleanup();
     #endif
@@ -82,7 +77,7 @@ void cleanup_network() {
 
 
 //Create TCP server
-SOCKET create_tcp_server(int port) {
+SOCKET createTcpServer(int port) {
 	
 	cout << MSG_STYLE_INFO << "Creating Socket..." << endl;
     log << LOG_STYLE_INFO << "Creating Socket..." << endl;
@@ -138,7 +133,7 @@ SOCKET create_tcp_server(int port) {
 
 
 //Deal with client connection
-void handle_client(SOCKET client_fd, sockaddr_in client_addr) {
+void handleClient(SOCKET client_fd, sockaddr_in client_addr) {
     USER user;
     USER *userp=&user;
     char* client_ip = inet_ntoa(client_addr.sin_addr);
@@ -176,22 +171,19 @@ void handle_client(SOCKET client_fd, sockaddr_in client_addr) {
         
         if (bytes_received > 0) {
             //When received data
-            cout << MSG_STYLE_INFO << "Massage From" << client_ip << ":" << client_port << buffer << endl;
-            log << LOG_STYLE_INFO << "Massage From" << client_ip << ":" << client_port << buffer << endl;
+            cout << MSG_STYLE_INFO << "Massage From" << client_ip << ": " << buffer << endl;
+            log << LOG_STYLE_INFO << "Massage From" << client_ip << ": " << buffer << endl;
             //Deal
-            string result=DealDATA(buffer,userp);
+            string result=dealData(buffer,userp);
             if(result[0]=='!'){
-                cout<< MSG_STYLE_WARN << "Cannot analyze the massage from" << client_ip << ":" << result <<endl;
-                log << LOG_STYLE_WARN << "Cannot analyze the massage from" << client_ip << ":" << result <<endl;
+                cout<< MSG_STYLE_WARN << "Cannot analyze the massage from" << client_ip << ": " << result <<endl;
+                log << LOG_STYLE_WARN << "Cannot analyze the massage from" << client_ip << ": " << result <<endl;
                 send(client_fd, result.c_str(), result.size(), 0);
             }
             else{
-                cout << MSG_STYLE_INFO << client_ip << ":" << result << endl;
-                log << LOG_STYLE_INFO << client_ip << ":" << result << endl;
+                cout << MSG_STYLE_INFO << "Analyzed the massage from" << client_ip << ":" << result << endl;
+                log << LOG_STYLE_INFO << "Analyzed the massage from" << client_ip << ":" << result << endl;
             }
-/*           string response = "Server Info:";
-            response += buffer;
-            send(client_fd, response.c_str(), response.size(), 0);*/
         } 
         else if (bytes_received == 0) {
             //Connection closed
@@ -229,7 +221,7 @@ void handle_client(SOCKET client_fd, sockaddr_in client_addr) {
 /*================DealCliData================*/
 
 string tmpstr[10];
-void strcut(string iptstr){
+void strCut(string iptstr){
     if( iptstr.length() > 1024 ){
         cout<< MSG_STYLE_WARN << "[StrCut] String is too long to cut!" << endl;
         log << LOG_STYLE_WARN << "[StrCut] String is too long to cut!" << endl;
@@ -253,34 +245,53 @@ void strcut(string iptstr){
     }
     return;
 }
-void Cleartmpstr(){
+void clearTmpStr(){
     for(int i=0;i<10;i++) tmpstr[i]="";
     return;
 }
-void Deallogin(USER *tmpuser,string username,string password){
-    USER user = *tmpuser;
-    ;
-    *tmpuser = user;
+void dealLogin(USER *userp,string username,string password){
+    USER user = *userp,tmp;
+    DB.shearch(&tmp,"uname",username);
+    if(tmp.passWord == password){
+        user.UUID = tmp.UUID;
+        user.passWord = tmp.passWord;
+        user.Logged = true;
+    }
+    else if(tmp.rtvalue == "") user.rtvalue = "!Wrong Password";
+    else user.rtvalue = tmp.rtvalue;
+    *userp = user;
     return;
 }
-string Deal_Clicmd(USER *tmpuser,string clicmd,int cmdlen,string cliinfo){
-    USER user = *tmpuser;
-    if(user.Logged){
-        if(clicmd=="login"){
+string dealClicmd(USER *userp,string clicmd,int cmdlen,string cliinfo){
+    USER user = *userp;
+    if(clicmd == "login"){
+        if(user.Logged){
             return "!User was already logged in";
         }
-        else return "!Unknown operation";
+        strCut(cliinfo);
+        dealLogin(&user,tmpstr[0],tmpstr[1]);
+        if(user.rtvalue == ""){
+            *userp = user;
+            return tmpstr[0]+" logged";
+        }
+        else if(user.rtvalue != "") return user.rtvalue;
+        clearTmpStr();
     }
-    else if(clicmd=="login"){
-        strcut(cliinfo);
-        Deallogin(tmpuser,tmpstr[0],tmpstr[1]);
+    if(clicmd == "msgto"){
+        strCut(cliinfo);
+        int i=0;
+        for(;i<5;i++) if(!cliMassage[i].onUse) break;
+        cliMassage[i].sourceUsername = user.userName;
+        cliMassage[i].targetUsername = tmpstr[0];
+        cliMassage[i].massage = tmpstr[1];
+        cliMassage[i].onUse = 1;
     }
     else {
         return "!Unknown operation";
     }
-    return "";
+    return "!Cannot analysis clicmd";
 }
-string DealDATA(char* buffer,USER *user){
+string dealData(char* buffer,USER *userp){
     string client_info,clicmd="";
     client_info=buffer;
     int i=0;
@@ -288,14 +299,14 @@ string DealDATA(char* buffer,USER *user){
         clicmd[i]=client_info[i];
         i++;
     }
-    return Deal_Clicmd(user,clicmd,i-1,client_info);
+    return dealClicmd(userp,clicmd,i-1,client_info);
 }
 
 
 /*================Command================*/
 
 string Command="";
-void InputCMD()
+void inputCmd()
 {
     while(Massage!="stop")
     {
@@ -308,7 +319,7 @@ void InputCMD()
 
 
 /*================StopServer================*/
-void ShutDownSer(){
+void shutDownSer(){
     Massage="stop";
     if (server_fd != INVALID_SOCKET) {
         cout << MSG_STYLE_INFO << "Closing Socket" << endl;
@@ -326,44 +337,56 @@ void ShutDownSer(){
 }
 
 
-/*================Main function================*/
-
-int main() {
-
+void onStart(){
 //Log
-    log.open("logs\\log.txt",ios::app);
+    log.open(logPath,ios::app);
 
 //Massage style up date
-    thread MSU(MSG_STYLE_UP_DATE);
+    thread MSU(MsgStyleUpDate);
     MSU.detach();
 
 //Early perpare
+    cout << "   _____ _______ ____     _____ _    _       _______ \n";
+    cout << "  / ____|__   __|  _ \\   / ____| |  | |   /\\|__   __|\n";
+    cout << " | |  __   | |  | |_) | | |    | |__| |  /  \\  | |   \n";
+    cout << " | | |_ |  | |  |  _ <  | |    |  __  | / /\\ \\ | |   \n";
+    cout << " | |__| |  | |  | |_) | | |____| |  | |/ ____ \\| |   \n";
+    cout << "  \\_____|  |_|  |____/   \\_____|_|  |_/_/    \\_\\_|   \n\n\n";
+    cout << "Welcome to GTB CHAT!" << endl;
     cout << "Starting Server..." << endl;
     log << "Starting Server..." << endl;
     enableColorSupport();
 
 
 //Config
-    readcfg(&log);
+    readCfg(&log);
+}
 
-//Init SQL
-    SQL.init(usersum);
+
+/*================Main function================*/
+
+int main() {
+
+    onStart();
+
+//Init DataBase
+    DB.init();
 
 //INIT WSA(Only on Windows)
-    if (!init_network()) {
+    if (!initNetwork()) {
         return 1001;
     }
     
 //Create Socket
-    server_fd = create_tcp_server(config.port);
+    server_fd = createTcpServer(config.port);
     if (server_fd == INVALID_SOCKET) {
-        cleanup_network();
+        cleanupNetwork();
         system("pause");
         return 1002;
     }
 
 //Coammand input
-    thread IPTCMD(InputCMD);
+    thread IPTCMD(inputCmd);
     IPTCMD.detach();
 
 //Main loop
@@ -391,7 +414,7 @@ int main() {
         
         //Create new thread for each client
         if(Client_sum<config.Max_client){
-            thread(handle_client, client_fd, client_addr).detach();
+            thread(handleClient, client_fd, client_addr).detach();
             Client_sum++;
         }
         else{
@@ -410,11 +433,51 @@ int main() {
         close(server_fd);
         #endif
     }   
-    cleanup_network();
-    SQL.closesql();
+    cleanupNetwork();
+    DB.closedb();
     cout << MSG_STYLE_INFO << "Server closed" << endl;
     log << LOG_STYLE_INFO << "Server closed" << endl;
     log.close();
     system("pause");
     return 0;
 }
+/*                                                                                               
+                                                                                                    
+                                                 ::                                                 
+                                                `i>`                                                
+                                                :!!:                                                
+                                         ......">"">,......                                         
+                                        ^l++il!l:  ,!l!i++!^                                        
+                                           ;<I`      `I<;                                           
+                                             `+;    ;~^                                             
+                                             :< `Il` >:                                             
+                                             +Iii^^!il+'                                            
+                                            ><I      ;<i                                            
+                                            '          '                                            
+                                                                                                    
+                                        .'`^,,,:,,,"^`.                                             
+                                    ',llI;;;;ll!i<<++___+i"'                                        
+                                                     'l>+___+!`                                     
+                                           .             'i+___+,                                   
+                                        .l+_______~,        ,~+___"                                 
+                                      .I+_________+i`         ;+___~'                               
+                                     ;+_________+>"            'i_+_~"                              
+                                   ,__________+~:                >___~:                             
+                                 "____________<                   ~___<,                            
+                               ^~__________+___+!                 '____i'                           
+                                 <_______+!I______;                <___+;                           
+                                  .~+__+l'   l______"              ;____l'                          
+                                    ^~!'      .>_____+`            ^+___i`                          
+                                                ^~_____+           "____>"                          
+                                                  ;+_____i         i____i`                          
+                                                    !+____+I       +____l.                          
+                                                     .<_____~,    i____~:                           
+                                 ;<^.                  `+____+i` I_____!                            
+                                .~___+I                  "_+___+~____+i.                            
+                                !+__+_~;.                 .I________+l                              
+                             .l+_________<i`                ;______+,                               
+                           .I++___+i.`l_____+~>i;`     'Ii<+________+!.                             
+                          '!____+_I    ';~+______+____________+<i+____~I                            
+                          '!____+`        '">__+___________+!".  'i____i.                           
+                           .,>~;.             .`^",,,,,,^`.        ^<>"                             
+*/

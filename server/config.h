@@ -3,6 +3,7 @@
 #include <fstream>
 
 #include "logcolor.h"
+#include "database.h"
 
 using namespace std;
 
@@ -10,15 +11,15 @@ fstream cfg;
 int Client_sum=0;
 
 struct CFG{
-    int port=1147;
+    int port=1145;
     int Max_client=20;
 };
 CFG config;
 
-void readcfg(fstream *log){
+void readCfg(fstream *log){
     string cfgtmp;
     cfg.open( "server.properties" , ios::out | ios::in);
-	cout << "["+get_current_time()+"\033[34m"+" PRESET"+"\033[0m"+"] " << "Loading config..." << endl;
+	cout << "["+getCurrentTime()+"\033[34m"+" PRESET"+"\033[0m"+"] " << "Loading config..." << endl;
     *log << LOG_STYLE_PRESET << "Loading config..." << endl;
     cfg << "#GTB Chat Server Config" << endl;
     while (cfg >> cfgtmp){

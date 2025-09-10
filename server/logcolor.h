@@ -19,7 +19,7 @@
 using namespace std;
 //Get time
 auto now = chrono::system_clock::now();
-string get_current_time(){
+string getCurrentTime(){
     auto now_time = chrono::system_clock::to_time_t(now);
     auto ms = chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch()) % 1000;
     
@@ -34,15 +34,20 @@ string get_current_time(){
     ss << put_time(&bt, "%H:%M:%S");//<< '.' << setfill('0') << setw(3) << ms.count();
     return ss.str();
 }
-string get_day(){
+string getDay(){
     time_t now_time = chrono::system_clock::to_time_t(now);
     tm local_time = *localtime(&now_time);
     
     int year = local_time.tm_year + 1900;
     int month = local_time.tm_mon + 1;
     int day = local_time.tm_mday;
-    return ;
+    return to_string(year)+"-"+to_string(month)+"-"+to_string(day);
 }
+
+string logPathStr = "logs\\"+getDay()+"-log.txt";
+string dbLogPathStr = "dblogs\\"+getDay()+"-log.txt";
+const char* logPath = logPathStr.c_str();
+const char* dbLogPath = dbLogPathStr.c_str();
 
 // ANSI ColorCode
 const string COLOR_RESET = "\033[0m";
@@ -64,18 +69,18 @@ string LOG_STYLE_INFO;
 string LOG_STYLE_WARN;
 string LOG_STYLE_ERROR;
 string LOG_STYLE_FATAL;
-void MSG_STYLE_UP_DATE(){
+void MsgStyleUpDate(){
     while(true){
-        MSG_STYLE_PRESET= "["+get_current_time()+COLOR_BLUE+" PRESET"+COLOR_RESET+"] ";
-        MSG_STYLE_INFO= "["+get_current_time()+COLOR_GREEN+" INFO"+COLOR_RESET+"] ";
-        MSG_STYLE_WARN= "["+get_current_time()+COLOR_YELLOW+" WARN"+COLOR_RESET+"] ";
-        MSG_STYLE_ERROR= "["+get_current_time()+COLOR_RED+" ERROR"+COLOR_RESET+"] ";
-        MSG_STYLE_FATAL= "["+get_current_time()+COLOR_FATAL+" FATAL"+COLOR_RESET+"] ";
-        LOG_STYLE_PRESET= "["+get_current_time()+" PRESET] ";
-        LOG_STYLE_INFO= "["+get_current_time()+" INFO] ";
-        LOG_STYLE_WARN= "["+get_current_time()+" WARN] ";
-        LOG_STYLE_ERROR= "["+get_current_time()+" ERROR] ";
-        LOG_STYLE_FATAL= "["+get_current_time()+" FATAL] ";
+        MSG_STYLE_PRESET= "["+getCurrentTime()+COLOR_BLUE+" PRESET"+COLOR_RESET+"] ";
+        MSG_STYLE_INFO= "["+getCurrentTime()+COLOR_GREEN+" INFO"+COLOR_RESET+"] ";
+        MSG_STYLE_WARN= "["+getCurrentTime()+COLOR_YELLOW+" WARN"+COLOR_RESET+"] ";
+        MSG_STYLE_ERROR= "["+getCurrentTime()+COLOR_RED+" ERROR"+COLOR_RESET+"] ";
+        MSG_STYLE_FATAL= "["+getCurrentTime()+COLOR_FATAL+" FATAL"+COLOR_RESET+"] ";
+        LOG_STYLE_PRESET= "["+getCurrentTime()+" PRESET] ";
+        LOG_STYLE_INFO= "["+getCurrentTime()+" INFO] ";
+        LOG_STYLE_WARN= "["+getCurrentTime()+" WARN] ";
+        LOG_STYLE_ERROR= "["+getCurrentTime()+" ERROR] ";
+        LOG_STYLE_FATAL= "["+getCurrentTime()+" FATAL] ";
         Sleep(250);
     }
 }
@@ -84,7 +89,7 @@ void MSG_STYLE_UP_DATE(){
 //Enable Console color support(Only on Windows)
 void enableColorSupport() {
     #ifdef _WIN32
-	cout << "[" << get_current_time() << " PRESET] " << "Enabling ConsoleColorSupport..."<< endl;
+	cout << "[" << getCurrentTime() << " PRESET] " << "Enabling ConsoleColorSupport..."<< endl;
     HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
     DWORD dwMode = 0;
     GetConsoleMode(hOut, &dwMode);

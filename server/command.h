@@ -8,13 +8,13 @@
 
 using namespace std;
 
-void ShutDownSer();
+void shutDownSer();
 bool cmdflag=0;
 void CommandDeal(fstream *log,string Command){
     if(Command=="stop"){
         cout << MSG_STYLE_INFO << "Stopping server" << endl;
         *log << LOG_STYLE_INFO << "Stopping server" << endl;
-        ShutDownSer();
+        shutDownSer();
     }
     else if(Command == "list"){
         cout << MSG_STYLE_INFO << "There are " << Client_sum << " users on line now(Max user count is " << config.Max_client << ")" << endl;
