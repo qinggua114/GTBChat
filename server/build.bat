@@ -1,0 +1,3 @@
+@echo off
+g++.exe server.cpp server.res -o "F:\projects\cpp\Chat\server\server.exe" -g3 -lws2_32 -std=c++11 -I"E:\EmbarcaderoDevCpp\TDM-GCC-64\include" -I"E:\EmbarcaderoDevCpp\TDM-GCC-64\x86_64-w64-mingw32\include" -I"E:\EmbarcaderoDevCpp\TDM-GCC-64\lib\gcc\x86_64-w64-mingw32\9.2.0\include" -I"E:\EmbarcaderoDevCpp\TDM-GCC-64\lib\gcc\x86_64-w64-mingw32\9.2.0\include\c++" -I"F:\projects\cpp\Chat\server" -L"E:\EmbarcaderoDevCpp\TDM-GCC-64\lib" -L"E:\EmbarcaderoDevCpp\TDM-GCC-64\x86_64-w64-mingw32\lib" -static-libgcc -g3
+pause
